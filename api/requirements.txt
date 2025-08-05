@@ -1,0 +1,17 @@
+# API Server Requirements for Elderly Care Assistant
+# FastAPI backend server for enhanced Ollama integration
+
+# Web framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# HTTP requests
+httpx>=0.25.0
+
+# Utilities
+python-dotenv>=1.0.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Development and production
+uvicorn[standard]>=0.24.0
