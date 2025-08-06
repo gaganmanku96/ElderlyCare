@@ -91,20 +91,21 @@ export const FloatingAssistant: React.FC<FloatingAssistantProps> = ({
   elderlyMode = false,
   disabled = false
 }) => {
-  const [showHelpText, setShowHelpText] = React.useState(false);
+  // Help text is now hidden, but keeping state for future use
+  // const [showHelpText, setShowHelpText] = React.useState(false);
 
-  // Show help text automatically for elderly users after a delay
-  React.useEffect(() => {
-    if (elderlyMode && !disabled) {
-      const timer = setTimeout(() => {
-        setShowHelpText(true);
-        // Hide it after 3 seconds
-        setTimeout(() => setShowHelpText(false), 3000);
-      }, 2000);
+  // Show help text automatically for elderly users after a delay (disabled)
+  // React.useEffect(() => {
+  //   if (elderlyMode && !disabled) {
+  //     const timer = setTimeout(() => {
+  //       setShowHelpText(true);
+  //       // Hide it after 3 seconds
+  //       setTimeout(() => setShowHelpText(false), 3000);
+  //     }, 2000);
 
-      return () => clearTimeout(timer);
-    }
-  }, [elderlyMode, disabled]);
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [elderlyMode, disabled]);
 
   if (disabled) return null;
 
@@ -112,7 +113,7 @@ export const FloatingAssistant: React.FC<FloatingAssistantProps> = ({
     <>
       <HelpText 
         $elderly={elderlyMode} 
-        $show={showHelpText}
+        $show={false}
       >
         Need help? Tap me!
       </HelpText>
@@ -120,8 +121,8 @@ export const FloatingAssistant: React.FC<FloatingAssistantProps> = ({
       <FloatingButton
         $elderly={elderlyMode}
         onClick={onOpenAssistant}
-        onMouseEnter={() => setShowHelpText(true)}
-        onMouseLeave={() => setShowHelpText(false)}
+        // onMouseEnter={() => setShowHelpText(true)}
+        // onMouseLeave={() => setShowHelpText(false)}
         aria-label="Get help with this screen"
         className="floating-assistant"
       >

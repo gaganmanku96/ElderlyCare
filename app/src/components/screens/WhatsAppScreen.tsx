@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { AndroidNavigationBar } from '../android';
+import { speakText } from '../../utils/voiceUtils';
+import { useScreenNavigation } from '../../contexts/ScreenStateContext';
 import { ArrowLeft, Search, MoreVertical, Camera, Send, User, Settings, LogOut } from 'lucide-react';
 
 const WhatsAppContainer = styled.div`
@@ -275,6 +277,9 @@ export const WhatsAppScreen: React.FC<WhatsAppScreenProps> = ({
   const [newMessage, setNewMessage] = useState('');
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
 
+  // Smart screenshot navigation tracking
+  const navigateToScreen = useScreenNavigation('whatsapp');
+
   const [chats] = useState<Chat[]>([
     {
       id: '1',
@@ -312,16 +317,12 @@ export const WhatsAppScreen: React.FC<WhatsAppScreenProps> = ({
 
   const currentChat = chats.find(chat => chat.id === selectedChat);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (newMessage.trim() && selectedChat) {
       console.log(`Sending WhatsApp message: ${newMessage} to chat ${selectedChat}`);
       setNewMessage('');
       
-      if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance("Message sent successfully!");
-        utterance.rate = 0.8;
-        speechSynthesis.speak(utterance);
-      }
+      await speakText("Message sent successfully!");
     }
   };
 
@@ -329,14 +330,10 @@ export const WhatsAppScreen: React.FC<WhatsAppScreenProps> = ({
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         setProfilePicture(e.target?.result as string);
         
-        if ('speechSynthesis' in window) {
-          const utterance = new SpeechSynthesisUtterance("Profile picture updated successfully!");
-          utterance.rate = 0.8;
-          speechSynthesis.speak(utterance);
-        }
+        await speakText("Profile picture updated successfully!");
       };
       reader.readAsDataURL(file);
     }
@@ -352,7 +349,10 @@ export const WhatsAppScreen: React.FC<WhatsAppScreenProps> = ({
           <ActionButton>
             <Search size={20} />
           </ActionButton>
-          <ActionButton onClick={() => setCurrentView('profile')}>
+          <ActionButton onClick={() => {
+            setCurrentView('profile');
+            navigateToScreen('profile');
+          }}>
             <MoreVertical size={20} />
           </ActionButton>
         </HeaderActions>
@@ -365,6 +365,7 @@ export const WhatsAppScreen: React.FC<WhatsAppScreenProps> = ({
             onClick={() => {
               setSelectedChat(chat.id);
               setCurrentView('conversation');
+              navigateToScreen(`conversation-${chat.name}`);
             }}
           >
             <Avatar>
@@ -384,7 +385,10 @@ export const WhatsAppScreen: React.FC<WhatsAppScreenProps> = ({
   const renderConversationView = () => (
     <>
       <ConversationHeader>
-        <ActionButton onClick={() => setCurrentView('chats')}>
+        <ActionButton onClick={() => {
+          setCurrentView('chats');
+          navigateToScreen('chats');
+        }}>
           <ArrowLeft size={20} />
         </ActionButton>
         <Avatar>
@@ -419,7 +423,10 @@ export const WhatsAppScreen: React.FC<WhatsAppScreenProps> = ({
   const renderProfileView = () => (
     <>
       <ProfileHeader>
-        <ActionButton onClick={() => setCurrentView('chats')}>
+        <ActionButton onClick={() => {
+          setCurrentView('chats');
+          navigateToScreen('chats');
+        }}>
           <ArrowLeft size={20} />
         </ActionButton>
         <HeaderTitle>Profile</HeaderTitle>

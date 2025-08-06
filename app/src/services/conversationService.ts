@@ -102,7 +102,7 @@ class ConversationService {
   addMessage(context: string, message: Omit<Message, 'id'>): Message {
     const fullMessage: Message = {
       ...message,
-      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `msg_${Date.now()}_${performance.now().toString().replace('.', '')}_${Math.random().toString(36).substr(2, 9)}`
     };
 
     if (!this.conversations[context]) {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { AndroidNavigationBar } from '../android';
+import { speakText } from '../../utils/voiceUtils';
 import { Phone, PhoneCall, User, Clock, Heart, Trash2 } from 'lucide-react';
 
 const PhoneContainer = styled.div`
@@ -265,15 +266,11 @@ export const PhoneScreen: React.FC<PhoneScreenProps> = ({
     setDialedNumber(prev => prev + digit);
   };
 
-  const handleCall = (number: string, name?: string) => {
+  const handleCall = async (number: string, name?: string) => {
     console.log(`Calling ${name || 'Unknown'}: ${number}`);
     
-    if ('speechSynthesis' in window) {
-      const message = name ? `Calling ${name}` : `Calling ${number}`;
-      const utterance = new SpeechSynthesisUtterance(message);
-      utterance.rate = 0.8;
-      speechSynthesis.speak(utterance);
-    }
+    const message = name ? `Calling ${name}` : `Calling ${number}`;
+    await speakText(message);
     
     // Simulate call interface (in real app, this would open call screen)
     alert(`Calling ${name || number}...`);

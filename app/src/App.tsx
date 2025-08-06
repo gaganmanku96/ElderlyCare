@@ -8,6 +8,7 @@ import { PhoneScreen } from './components/screens/PhoneScreen'
 import { SettingsScreen } from './components/screens/SettingsScreen'
 import { FloatingAssistant } from './components/FloatingAssistant'
 import { AssistantOverlay } from './components/AssistantOverlay'
+import { ScreenStateProvider } from './contexts/ScreenStateContext'
 
 const AppContainer = styled.div`
   min-height: 100vh;
@@ -137,39 +138,41 @@ function App() {
   }
 
   return (
-    <AppContainer>
-      <ControlPanel>
-        <ToggleButton onClick={() => setElderlyMode(!elderlyMode)}>
-          {elderlyMode ? 'Normal Mode' : 'Elderly Mode'}
-        </ToggleButton>
-        <InfoText>
-          {elderlyMode ? 'Large buttons & text enabled' : 'Standard interface'}
-        </InfoText>
-      </ControlPanel>
+    <ScreenStateProvider>
+      <AppContainer>
+        <ControlPanel>
+          <ToggleButton onClick={() => setElderlyMode(!elderlyMode)}>
+            {elderlyMode ? 'Normal Mode' : 'Elderly Mode'}
+          </ToggleButton>
+          <InfoText>
+            {elderlyMode ? 'Large buttons & text enabled' : 'Standard interface'}
+          </InfoText>
+        </ControlPanel>
 
-      <AndroidPhone
-        assistantOverlay={
-          <>
-            {/* Floating Assistant - appears on all screens */}
-            <FloatingAssistant
-              onOpenAssistant={handleAssistantOpen}
-              elderlyMode={elderlyMode}
-              disabled={showAssistantOverlay}
-            />
-            
-            {/* Assistant Overlay - modal within phone container */}
-            <AssistantOverlay
-              show={showAssistantOverlay}
-              onClose={handleAssistantClose}
-              elderlyMode={elderlyMode}
-              currentContext={currentScreen}
-            />
-          </>
-        }
-      >
-        {renderScreen()}
-      </AndroidPhone>
-    </AppContainer>
+        <AndroidPhone
+          assistantOverlay={
+            <>
+              {/* Floating Assistant - appears on all screens */}
+              <FloatingAssistant
+                onOpenAssistant={handleAssistantOpen}
+                elderlyMode={elderlyMode}
+                disabled={showAssistantOverlay}
+              />
+              
+              {/* Assistant Overlay - modal within phone container */}
+              <AssistantOverlay
+                show={showAssistantOverlay}
+                onClose={handleAssistantClose}
+                elderlyMode={elderlyMode}
+                currentContext={currentScreen}
+              />
+            </>
+          }
+        >
+          {renderScreen()}
+        </AndroidPhone>
+      </AppContainer>
+    </ScreenStateProvider>
   )
 }
 

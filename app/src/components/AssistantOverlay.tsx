@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { X, Mic, Volume2, Camera, Loader, Trash2 } from 'lucide-react';
 import { AndroidButton } from './android';
 import { captureScreenshot, analyzeWithScreenshotData } from '../services/aiService';
 import { conversationService } from '../services/conversationService';
+import { speakText, stopSpeaking } from '../utils/voiceUtils';
+import { useScreenshotCapture } from '../hooks/useScreenshotCapture';
+import { useScreenState } from '../contexts/ScreenStateContext';
 import type { Message } from '../types/conversation';
 
 const Overlay = styled.div<{ $show?: boolean }>`
@@ -97,10 +100,10 @@ const ScreenshotSection = styled.div<{ $elderly?: boolean; $ratio: number }>`
   flex-shrink: 0;
   flex-grow: 0;
   height: ${props => `${props.$ratio * 100}%`};
-  min-height: ${props => props.$elderly ? '120px' : '100px'};
-  max-height: ${props => props.$elderly ? '300px' : '250px'};
+  min-height: ${props => props.$elderly ? '140px' : '120px'};
+  max-height: ${props => props.$elderly ? '350px' : '300px'};
   background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f4 100%);
-  padding: ${props => props.$elderly ? '16px' : '12px'};
+  padding: ${props => props.$elderly ? '20px 16px' : '16px 12px'};
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -121,21 +124,22 @@ const ScreenshotSection = styled.div<{ $elderly?: boolean; $ratio: number }>`
 `;
 
 const ScreenshotContainer = styled.div<{ $elderly?: boolean }>`
-  width: 90%;
-  max-width: ${props => props.$elderly ? '150px' : '120px'};
+  width: 100%;
+  min-width: ${props => props.$elderly ? '80px' : '60px'};
+  max-width: ${props => props.$elderly ? '200px' : '160px'};
   aspect-ratio: 9/16;
-  background: #ffffff;
+  background: #f5f5f5;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-  margin-bottom: ${props => props.$elderly ? '12px' : '10px'};
+  margin: 0 auto ${props => props.$elderly ? '12px' : '10px'};
   position: relative;
   border: 2px solid #e8eaed;
   transition: all 0.3s ease;
   cursor: pointer;
 
   &:hover {
-    transform: scale(1.05);
+    transform: scale(1.02);
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
     border-color: #4285f4;
   }
@@ -144,7 +148,8 @@ const ScreenshotContainer = styled.div<{ $elderly?: boolean }>`
 const ScreenshotImage = styled.img`
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  background: #ffffff;
 `;
 
 const ScreenshotPlaceholder = styled.div<{ $elderly?: boolean }>`
@@ -395,6 +400,7 @@ const ScreenshotLabel = styled.p<{ $elderly?: boolean }>`
   font-weight: 600;
 `;
 
+
 const ClearChatButton = styled.button<{ $elderly?: boolean }>`
   position: absolute;
   top: ${props => props.$elderly ? '16px' : '12px'};
@@ -546,6 +552,10 @@ export const AssistantOverlay: React.FC<AssistantOverlayProps> = ({
   });
   const conversationAreaRef = useRef<HTMLDivElement>(null);
   const resizerRef = useRef<HTMLDivElement>(null);
+  const phoneScreenRef = useRef<HTMLElement>(null);
+  
+  // Use screen state from context for smart triggering
+  const { screenState, updateScreenState } = useScreenState();
 
   // Enhanced helper function to check if a similar message was recently added
   const isDuplicateMessage = (newText: string, isUser: boolean): boolean => {
@@ -641,16 +651,12 @@ export const AssistantOverlay: React.FC<AssistantOverlayProps> = ({
   useEffect(() => {
     if (!show) {
       // Stop any ongoing speech when modal closes
-      if ('speechSynthesis' in window) {
-        speechSynthesis.cancel();
-      }
+      stopSpeaking();
     }
     
     // Cleanup on component unmount
     return () => {
-      if ('speechSynthesis' in window) {
-        speechSynthesis.cancel();
-      }
+      stopSpeaking();
     };
   }, [show]);
 
@@ -658,7 +664,7 @@ export const AssistantOverlay: React.FC<AssistantOverlayProps> = ({
   useEffect(() => {
     if (!show) return;
 
-    // Handle context changes
+    // Handle context changes - FORCE fresh screenshot when switching apps
     if (currentContext !== lastContext) {
       setLastContext(currentContext);
       
@@ -670,15 +676,17 @@ export const AssistantOverlay: React.FC<AssistantOverlayProps> = ({
         setMessages([]);
       }
       
-      // DON'T clear screenshot immediately - preserve current screenshot until new one loads
-      // setScreenshotData(null); // REMOVED - this was causing "No screenshot captured"
+      // FORCE fresh screenshot on context switch - clear old screenshot and capture new one
+      setScreenshotData(null); // Clear old screenshot to force refresh
       
       // Track context switch time for smart screenshot logic
       conversationService.updateContextSwitchTime(currentContext);
-      // Small delay to prevent rapid successive calls
+      
+      // Longer delay to ensure UI is fully rendered after app switch (300ms instead of 100ms)
       const timer = setTimeout(() => {
+        console.log('Forcing fresh screenshot capture after app context change:', currentContext);
         handleCaptureScreenshot();
-      }, 100);
+      }, 300);
       return () => clearTimeout(timer);
     }
 
@@ -686,10 +694,11 @@ export const AssistantOverlay: React.FC<AssistantOverlayProps> = ({
     if (!screenshotData) {
       const needsFresh = conversationService.needsFreshScreenshot(currentContext);
       if (needsFresh) {
-        // Small delay to ensure state is settled
+        // Delay to ensure UI state is fully settled (300ms for consistency)
         const timer = setTimeout(() => {
+          console.log('Capturing initial screenshot for context:', currentContext);
           handleCaptureScreenshot();
-        }, 100);
+        }, 300);
         return () => clearTimeout(timer);
       }
     }
@@ -701,6 +710,32 @@ export const AssistantOverlay: React.FC<AssistantOverlayProps> = ({
       conversationAreaRef.current.scrollTop = conversationAreaRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Initialize phone screen ref and smart state tracking
+  useEffect(() => {
+    const phoneScreenElement = document.querySelector('[data-phone-screen]') as HTMLElement;
+    if (phoneScreenElement) {
+      phoneScreenRef.current = phoneScreenElement;
+    }
+    
+    // Update screen state when context changes
+    if (show) {
+      updateScreenState(`${currentContext}-initial-${Date.now()}`);
+    }
+  }, [currentContext, show, updateScreenState]);
+
+  // Expert screenshot capture with state-based triggering
+  const handleScreenshotUpdate = useCallback(async (imageData: string, metadata: any) => {
+    const base64Data = imageData.split(',')[1]; // Remove data URL prefix
+    setScreenshotData({
+      image: base64Data,
+      metadata: metadata
+    });
+    conversationService.updateScreenshotTimestamp(currentContext);
+  }, [currentContext]);
+
+  // Use expert hook for invisible, smart screenshot updates
+  useScreenshotCapture(phoneScreenRef, screenState, handleScreenshotUpdate, 1500);
 
   const handleCaptureScreenshot = async () => {
     setIsCapturing(true);
@@ -793,8 +828,20 @@ export const AssistantOverlay: React.FC<AssistantOverlayProps> = ({
         setIsAnalyzing(true);
 
         try {
-          // Use the captured screenshot data with the new enhanced analysis
-          const response = await analyzeWithScreenshotData(transcript, currentContext, screenshotData || undefined);
+          // Debug info for user
+          if (screenshotData) {
+            console.log(`📸 SCREENSHOT STATUS: Using screenshot (${Math.round(screenshotData.image.length / 1024)} KB) from ${screenshotData.metadata.appName}`);
+          } else {
+            console.log(`❌ SCREENSHOT STATUS: No screenshot available for analysis`);
+          }
+
+          // Use the captured screenshot data with the new enhanced analysis and conversation history
+          const response = await analyzeWithScreenshotData(
+            transcript, 
+            currentContext, 
+            screenshotData || undefined,
+            messages // Pass current conversation history for progressive guidance
+          );
           
           const aiMessage = conversationService.addMessage(currentContext, {
             text: response.guidance,
@@ -804,14 +851,8 @@ export const AssistantOverlay: React.FC<AssistantOverlayProps> = ({
 
           setMessages(prev => [...prev, aiMessage]);
           
-          // Text-to-speech for the response (cancel any previous speech first)
-          if ('speechSynthesis' in window) {
-            speechSynthesis.cancel(); // Stop any ongoing speech
-            const utterance = new SpeechSynthesisUtterance(response.guidance);
-            utterance.rate = elderlyMode ? 0.7 : 0.8; // Slower for elderly mode
-            utterance.pitch = 1;
-            speechSynthesis.speak(utterance);
-          }
+          // Text-to-speech for the response using enhanced female voice
+          await speakText(response.guidance, elderlyMode);
         } catch (error) {
           console.error('Analysis error:', error);
           const errorMessage = conversationService.addMessage(currentContext, {
@@ -840,13 +881,10 @@ export const AssistantOverlay: React.FC<AssistantOverlayProps> = ({
     }
   };
 
-  const handleRepeatLastAnswer = () => {
+  const handleRepeatLastAnswer = async () => {
     const lastAiMessage = messages.filter(m => !m.isUser).pop();
-    if (lastAiMessage && 'speechSynthesis' in window) {
-      speechSynthesis.cancel(); // Stop any ongoing speech first
-      const utterance = new SpeechSynthesisUtterance(lastAiMessage.text);
-      utterance.rate = elderlyMode ? 0.7 : 0.8; // Slower for elderly mode
-      speechSynthesis.speak(utterance);
+    if (lastAiMessage) {
+      await speakText(lastAiMessage.text, elderlyMode);
     }
   };
 
@@ -879,9 +917,7 @@ export const AssistantOverlay: React.FC<AssistantOverlayProps> = ({
       <OverlayContent $elderly={elderlyMode}>
         <CloseButton $elderly={elderlyMode} onClick={() => {
           // Stop speech and close modal
-          if ('speechSynthesis' in window) {
-            speechSynthesis.cancel();
-          }
+          stopSpeaking();
           onClose();
         }}>
           <X size={elderlyMode ? 24 : 20} />
@@ -917,7 +953,7 @@ export const AssistantOverlay: React.FC<AssistantOverlayProps> = ({
           
           <ScreenshotLabel $elderly={elderlyMode}>
             {screenshotData 
-              ? `${screenshotData.metadata.appName === 'unknown' ? currentContext : screenshotData.metadata.appName} Screen`
+              ? `${screenshotData.metadata.appName === 'unknown' ? currentContext : screenshotData.metadata.appName} Screen${isAnalyzing ? ' (AI analyzing...)' : ' (Ready)'}`
               : 'Capturing your screen...'
             }
           </ScreenshotLabel>

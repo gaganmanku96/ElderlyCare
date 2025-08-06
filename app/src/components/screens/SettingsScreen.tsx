@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { AndroidNavigationBar } from '../android';
+import { speakText } from '../../utils/voiceUtils';
 import { 
   Wifi, 
   Bluetooth, 
@@ -226,14 +227,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     darkMode: false
   });
 
-  const updateSetting = (key: string, value: any) => {
+  const updateSetting = async (key: string, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
     
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(`${key} updated successfully`);
-      utterance.rate = 0.8;
-      speechSynthesis.speak(utterance);
-    }
+    await speakText(`${key} updated successfully`);
   };
 
   const renderMainSettings = () => (
