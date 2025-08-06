@@ -2,6 +2,12 @@
 
 AI-powered smartphone assistant that helps seniors navigate their phones with voice guidance and simple interfaces.
 
+## 📹 Demo Video
+
+[![Elderly Care Assistant Demo](https://img.youtube.com/vi/POx6onh6keM/maxresdefault.jpg)](https://youtu.be/POx6onh6keM)
+
+*Click to watch the full demo on YouTube*
+
 ## What it does
 
 This app helps elderly people learn to use smartphones by:
